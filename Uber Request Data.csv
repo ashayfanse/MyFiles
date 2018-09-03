@@ -1,0 +1,17 @@
+New Variable Derived
+
+Drop Point
+"Based on the Pick up point we derived on to the drop of point
+ie if the pickup point was airport, drop point was considered city and vice versa"
+Request Time
+Splitting the Request time stamp into Request Date and Request Time
+Drop Time
+Splitting the Drop time stamp into Drop Date and Drop Time
+Day
+
+Time of Day
+"Based on the Time given we have derived a new variable  ""Request Time of The day""
+Which shows when the request was sent"
+
+
+How to calculate supply & demand?
