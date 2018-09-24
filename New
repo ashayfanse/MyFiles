@@ -1,0 +1,63 @@
+#EDA Case Study
+
+#reading data
+loan.data <- read.csv("loan.csv", stringsAsFactors = FALSE, header = TRUE)
+str(loan.data)
+
+library(dplyr)
+library(stringr)
+library(ggplot)
+library(tidyr)
+library(tidyverse)
+
+
+
+
+#---------------------------------------data cleaning----------------------------------------------#
+#filtering first 50 rows to see if there are columns with NA values in data set
+head(loan.data, 50)
+
+#checking NA column wise
+sapply(loan.data, function(x) sum(is.na(x)))
+map(loan.data, ~sum(is.na(.)))
+
+#this will show that the total number of rows are equal to NA values for some columns, which means they are emepty.
+
+#checking NA row wise
+apply(loan.data, MARGIN = 1, function(x) sum(is.na(x)))
+mtcars %>%
+  rowwise %>%
+" summarise(NA_per_row = sum(is.na(.)))"
+
+#check for duplicate values
+
+
+#replacing values represting NA with NA
+loan.data$emp_length <- str_replace_all(loan.data$emp_length, "n/a", "NA")
+
+#removing % sign from columns and converting into numeric 
+as.numeric(gsub("\\%", "", loan.data$int_rate))
+as.numeric(gsub("\\%", "", loan.data$revol_util))
+
+#converting
+as.numeric(loan.data$funded_amnt_inv)
+as.numeric(loan.data$annual_inc)
+
+#rounding off multiple columns
+loan.data %>% mutate_each(funs(round(.,1)), column_name1, column_name2)
+
+#subsetting the data
+
+
+loan.data.subset <- subset(loan.data, select = c("id","member_id","loan_amnt","funded_amnt","funded_amnt_inv","term","int_rate","installment","grade","sub_grade","emp_title","emp_length","home_ownership","annual_inc","verification_status","issue_d","loan_status","pymnt_plan","url","desc","purpose","title","zip_code","addr_state","dti","delinq_2yrs","earliest_cr_line"	"inq_last_6mths","mths_since_last_delinq","mths_since_last_record","open_acc","pub_rec","revol_bal","revol_util","total_acc","initial_list_status","out_prncp","out_prncp_inv"	"total_pymnt","total_pymnt_inv","total_rec_prncp","total_rec_int","total_rec_late_fee","recoveries","collection_recovery_fee","last_pymnt_d","last_pymnt_amnt","last_credit_pull_d","collections_12_mths_ex_med","policy_code","application_type","acc_now_delinq","chargeoff_within_12_mths","delinq_amnt","pub_rec_bankruptcies","tax_liens"))
+
+View(loan.data.subset)
+
+
+
+#plottting
+
+plot1 <- ggplot(loan.data.subset,aes(x="loan_status",stat=""))+
+			geom_bar(fill="count")
+			
+#this will give us the percentage of people who have defaulted the loan
