@@ -19,7 +19,7 @@ head(loan.data, 50)
 
 #checking NA column wise
 sapply(loan.data, function(x) sum(is.na(x)))
-map(loan.data, ~sum(is.na(.)))
+map(loan.data, ~sum(is.na(.))/n())
 
 #this will show that the total number of rows are equal to NA values for some columns, which means they are emepty.
 
@@ -39,6 +39,8 @@ loan.data$emp_length <- str_replace_all(loan.data$emp_length, "n/a", "NA")
 as.numeric(gsub("\\%", "", loan.data$int_rate))
 as.numeric(gsub("\\%", "", loan.data$revol_util))
 gsub("\\xx", "", loan.data$zip_code)
+gsub("\\+", "", loan.data$emp_length)
+gsub("\\<", "", loan.data$emp_length)
 as.numeric(loan.data$loan_amnt)
 as.numeric(loan.data$funded_amnt)
 as.numeric(loan.data$funded_amnt_inv)
@@ -84,7 +86,25 @@ View(loan.data.subset)
 #initial_list_status
 #policy_code
 #application_type
+#URL
+#pymnt_plan
+#desc
+#collections_12_mths_ex_med
+#acc_now_delinq
+
+
+#----------------------------------- Doubtful-----------------------------------------------------#
+#emp_title
+#title
 #
+
+
+
+
+
+
+
+
 
 #plottting
 
