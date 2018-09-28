@@ -1,0 +1,286 @@
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+
+#load data set
+loan_Data<-read.csv("loan.csv",stringsAsFactors = F)
+
+#View data in the data set 
+View(loan_Data)
+
+
+#--------------------------------- Cleaning Data-------------------------------------------------------
+
+#------------------------------------------------------------------------------------------------------
+# 1. check for duplicate id
+
+loan_Data[which(duplicated(loan_Data$id)),]
+
+loan_Data[which(duplicated(loan_Data$member_id)),]
+
+#Conclusion: No duplicate id and member_id present in the data set.
+
+#2. check number of NAs in which all columns 
+
+sapply(colnames(loan_Data), function(x) length(which(is.na(loan_Data[,x]))))
+
+#Conclusion: Following columns should be ignored as maximum the values are NA.
+
+loan_Data$mths_since_last_delinq<-NULL
+loan_Data$mths_since_last_record<-NULL
+loan_Data$mths_since_last_major_derog<-NULL
+loan_Data$annual_inc_joint<-NULL
+loan_Data$dti_joint<-NULL
+loan_Data$verification_status_joint<-NULL
+loan_Data$tot_coll_amt<-NULL
+loan_Data$tot_cur_bal<-NULL
+loan_Data$open_acc_6m<-NULL
+loan_Data$open_il_6m<-NULL
+loan_Data$open_il_12m<-NULL
+loan_Data$open_il_24m<-NULL
+loan_Data$mths_since_rcnt_il<-NULL
+loan_Data$total_bal_il<-NULL
+loan_Data$il_util<-NULL
+loan_Data$open_rv_12m<-NULL
+loan_Data$open_rv_24m<-NULL
+loan_Data$max_bal_bc<-NULL
+loan_Data$all_util<-NULL
+loan_Data$total_rev_hi_lim<-NULL
+loan_Data$inq_fi<-NULL
+loan_Data$total_cu_tl<-NULL
+loan_Data$inq_last_12m<-NULL
+loan_Data$acc_open_past_24mths<-NULL
+loan_Data$avg_cur_bal<-NULL
+loan_Data$bc_open_to_buy<-NULL
+loan_Data$bc_util<-NULL
+loan_Data$mo_sin_old_il_acct<-NULL
+loan_Data$mo_sin_old_rev_tl_op<-NULL
+loan_Data$mo_sin_rcnt_rev_tl_op<-NULL
+loan_Data$mo_sin_rcnt_tl<-NULL
+loan_Data$mort_acc<-NULL
+loan_Data$mths_since_recent_bc<-NULL
+loan_Data$mths_since_recent_bc_dlq<-NULL
+loan_Data$mths_since_recent_inq<-NULL
+loan_Data$mths_since_recent_revol_delinq<-NULL
+loan_Data$num_accts_ever_120_pd<-NULL
+loan_Data$num_actv_bc_tl<-NULL
+loan_Data$num_actv_rev_tl<-NULL
+loan_Data$num_bc_sats<-NULL
+loan_Data$num_bc_tl<-NULL
+loan_Data$num_il_tl<-NULL
+loan_Data$num_op_rev_tl<-NULL
+loan_Data$num_bc_tl<-NULL                   
+loan_Data$num_il_tl<-NULL                  
+loan_Data$num_op_rev_tl<-NULL
+loan_Data$num_rev_accts<-NULL
+loan_Data$num_rev_tl_bal_gt_0<-NULL
+loan_Data$num_sats<-NULL
+loan_Data$num_tl_120dpd_2m<-NULL
+loan_Data$num_tl_30dpd<-NULL
+loan_Data$num_tl_90g_dpd_24m<-NULL 
+loan_Data$num_tl_op_past_12m<-NULL           
+loan_Data$pct_tl_nvr_dlq<-NULL     
+loan_Data$percent_bc_gt_75<-NULL
+loan_Data$tot_hi_cred_lim<-NULL
+loan_Data$total_bal_ex_mort<-NULL             
+loan_Data$total_bc_limit<-NULL
+loan_Data$total_il_high_credit_limit<-NULL
+
+#3. check number of zeros in which all columns 
+
+sapply(colnames(loan_Data), function(x) length(which(loan_Data[,x]==0)))
+
+#Conclusion: Following columns should be ignored as all the values are 0.
+
+loan_Data$acc_now_delinq<-NULL
+loan_Data$delinq_amnt<-NULL
+loan_Data$out_prncp<-NULL
+loan_Data$out_prncp_inv<-NULL
+
+# 4. We only need data for classes, FULLY PAID and CHARGED OFF so lets remove data having status current
+
+loan_Data<-loan_Data[-which(toupper(loan_Data$loan_status) == "CURRENT"), ]
+
+#5. Removing all the columns having only one unquie value i.e. the whole column has same value.
+
+loan_Data <- loan_Data[vapply(loan_Data, function(x) length(unique(x)) > 1, logical(1L))]
+
+# 6. URL is useless column without a login/ passwd, remove url column
+
+loan_Data <- subset(loan_Data, select = -c(url) )
+
+# 7. Customer demographics variable which will not be required can be removed as the analysis is based on patterns
+
+loan_Data <- subset(loan_Data, select = -c(desc, title) ) 
+
+# 8. As all member_id, id are unique. So we can get rid of the redundant member_id as there is a 1-1 mapping from loan Id to member Id
+
+loan_Data <- subset(loan_Data, select = -c(id, member_id) )
+
+# 9. Find all text columns and convert to upper case to make data uniform
+
+num_col<-sapply(loan_Data, is.numeric) 
+loan_Data[,!num_col] <- mutate_all(loan_Data[,!num_col], funs(toupper))
+rm(num_col)
+
+#--------------------------------------------------------------------------------------------
+#-------------------------Cleaning column data-----------------------------------------------
+#--------------------------------------------------------------------------------------------
+
+#1. Removing % from int_rate Column
+
+loan_Data$int_rate <- gsub("%", "", loan_Data$int_rate)
+loan_Data$int_rate<-as.numeric(loan_Data$int_rate)
+
+#2. Remove Months in Term column as all the data in column is in months
+
+loan_Data$term <- gsub("MONTHS", "", loan_Data$term)
+loan_Data$term <- as.numeric(loan_Data$term)
+loan_Data$term <- as.factor(loan_Data$term)
+
+#3.Removing + < > signs from emp_length in the database
+
+loan_Data$emp_length <- gsub("\\D+", "", loan_Data$emp_length)
+sum(is.na(loan_Data$emp_length))
+sum(loan_Data$emp_length=="")
+
+#There are 1033 blank values in emp_length which we equalise with median of entire emp_length
+loan_Data$emp_length[loan_Data$emp_length==""] <- median(loan_Data$emp_length,na.rm = T)
+
+#4.finding outliers in annual_inc and removing the same
+
+annual_inc <- boxplot(loan_Data$annual_inc)
+loan_Data$annual_inc[(loan_Data$annual_inc %in% annual_inc$out)] <- NA
+
+#5. Cleaning emp_title column
+
+loan_Data$emp_title <- gsub("[[:punct:]]", "", loan_Data$emp_title)
+loan_Data$emp_title <- gsub(" AND ", " & ", loan_Data$emp_title)
+loan_Data$emp_title <- gsub("NORTH AMERICA", "NA", loan_Data$emp_title)
+loan_Data$emp_title <- gsub("LLC", "", loan_Data$emp_title)
+loan_Data$emp_title <- gsub("LLP", "", loan_Data$emp_title)
+loan_Data$emp_title <- gsub("INC", "", loan_Data$emp_title)
+loan_Data$emp_title <- gsub("\\UNITED STATES", "US", loan_Data$emp_title)
+loan_Data$emp_title <- gsub("[[:space:]]", "", loan_Data$emp_title)
+loan_Data$emp_title[which(loan_Data$emp_title == "USAIRFORCE")] <- "USAF"
+loan_Data$emp_title[which(loan_Data$emp_title == "USARMY")] <- "ARMY"
+loan_Data$emp_title[which(loan_Data$emp_title == "USNAVY")] <- "NAVY"
+loan_Data$emp_title[which(loan_Data$emp_title == "USPOSTALSERVICE")] <- "USPS"
+loan_Data$emp_title[which(loan_Data$emp_title == "UNITEDPARCELSERVICE")] <- "UPS"
+loan_Data$emp_title[which(loan_Data$emp_title == "VERIZONWIRELESS")] <- "VERIZON"
+loan_Data$emp_title[which(loan_Data$emp_title == "SELFEMPLOYED")] <- "SELF"
+loan_Data$emp_title[which(loan_Data$emp_title == "THEHOMEDEPOT")] <- "HOMEDEPOT"
+loan_Data$emp_title[which(loan_Data$emp_title == "ZURICHOFNA")] <- "ZURICHNA"
+
+#6. Removing % from revol_util
+
+loan_Data$revol_util <- gsub("%", "", loan_Data$revol_util)
+loan_Data$revol_util<-as.numeric(loan_Data$revol_util)
+
+#7. Arranging columns in alphabetical order
+
+loan_Data <- loan_Data[c(sort(colnames(loan_Data)))]
+
+write.csv(loan_Data,"loan_test.csv",row.names = F)
+
+#-------------------------------------------------------------------------------------------
+#---------------------------------------Univariate Analysis---------------------------------
+#-------------------------------------------------------------------------------------------
+
+charged_off_loan<-loan_Data[which(toupper(loan_Data$loan_status) == "CHARGED OFF"), ]
+fully_paid_loan<-loan_Data[-which(toupper(loan_Data$loan_status) == "CHARGED OFF"), ]
+
+# 1. Analysis using address details
+
+plot_addr_State <- ggplot(loan_Data,aes(x=addr_state , fill = addr_state)) + 
+  geom_histogram(stat="count", bins = length(unique(loan_Data$addr_state))) + 
+  geom_text(stat='count',aes(label=..count..),vjust=-0.25) + 
+  labs(x="State",y="Frequency of Application") +
+  ggtitle("State Wise - Frequency of Application" )
+
+plot_addr_State
+
+# 2. home ownership analysis
+
+plot_home_owner<- ggplot(loan_Data, aes(reorder(home_ownership, 
+                  -table(home_ownership)[home_ownership]))) +
+                  geom_bar(stat="count") + scale_y_continuous(trans='log2') + 
+                  geom_text(stat='count',aes(label=..count..),vjust=-0.5)+ 
+                xlab("Home Ownership")+ylab("Frequency of Applicants") +
+                ggtitle("Home Ownership -Frequency of Applicants")
+
+plot_home_owner
+
+#most applicants have house ownership as rent.
+
+#3. Loan Status analysis
+
+plot_loan_Status<- ggplot(loan_Data, aes(reorder(loan_status, 
+                -table(loan_status)[loan_status]))) +
+  geom_bar(stat="count") + scale_y_continuous(trans='log2') + 
+  geom_text(stat='count',aes(label=..count..),vjust=-0.5)+ 
+  xlab("Loan Status")+ylab("Frequency of Applicants") +
+  ggtitle("Loan Status -Frequency of Applicants")
+
+plot_loan_Status
+
+#Fully paid load status applications are 32950
+
+#4. Purpose of loan analysis
+
+plot_purpose_loan<- ggplot(loan_Data, aes(reorder(purpose, 
+                                                 -table(purpose)[purpose]))) +
+  geom_bar(stat="count") + scale_y_continuous(trans='log2') + 
+  geom_text(stat='count',aes(label=..count..),vjust=-0.5)+ 
+  xlab("Purpose")+ylab("Frequency of Applications") +
+  ggtitle("Purpose -Frequency of Applications")
+
+plot_purpose_loan
+
+#Main purpose is DEBT_CONSOLIDATION where the frequency is 18055
+
+# 5. Loan Verification Status analysis
+
+
+plot_veri_stat_loan<- ggplot(loan_Data, aes(reorder(verification_status, 
+                                                  -table(verification_status)[verification_status]))) +
+  geom_bar(stat="count") + scale_y_continuous(trans='log2') + 
+  geom_text(stat='count',aes(label=..count..),vjust=-0.5)+ 
+  xlab("Loan Verification Status")+ylab("Frequency of Applications") +
+  ggtitle("Loan Verification Status -Frequency of Applications")
+
+plot_veri_stat_loan
+
+#16694 applications are not verified
+
+# 6. Employment length analysis
+
+plot_emp_len<- ggplot(loan_Data, aes(reorder(emp_length, 
+                                                    -table(emp_length)[emp_length]))) +
+  geom_bar(stat="count") + scale_y_continuous(trans='log2') + 
+  geom_text(stat='count',aes(label=..count..),vjust=-0.5)+ 
+  xlab("Loan Verification Status")+ylab("Frequency of Applications") +
+  ggtitle("Loan Verification Status -Frequency of Applications")
+
+plot_emp_len
+
+#8488 applicants have 10 years of experience while 7677 have 1 year of experience
+
+#7.Loan term Analysis
+
+plot_loan_term<- ggplot(loan_Data, aes(reorder(term, 
+                                             -table(term)[term]))) +
+  geom_bar(stat="count") + scale_y_continuous(trans='log2') + 
+  geom_text(stat='count',aes(label=..count..),vjust=-0.5)+ 
+  xlab("Loan term")+ylab("Frequency of Applications") +
+  ggtitle("Loan term  -Frequency of Applications")
+
+plot_loan_term
+
+# maximum applications are for 36 months i.e 29096  applications are for 36 months
+
+
+#-------------------------------------------------------------------------------------------
+#-------------------------------Segmented Univariate Analysis-------------------------------
+#-------------------------------------------------------------------------------------------
